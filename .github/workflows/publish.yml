@@ -33,8 +33,7 @@ jobs:
         with:
           node-version: 18
       - run: npm i
-      # create bundles and deploy on npm
-      - run: npm run bundle
+      # deploy on npm
       - uses: JS-DevTools/npm-publish@v1
         with:
           token: ${{ secrets.NPM_TOKEN }}
