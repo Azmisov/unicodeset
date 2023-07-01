@@ -1,0 +1,9 @@
+.gitignore
+.github/*
+.vscode/*
+tests/*
+docs/*
+coverage/*
+package-lock.json
+jest.config.js
+*.tgz

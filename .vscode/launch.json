@@ -5,13 +5,15 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "NPM test",
 			"type": "node",
 			"request": "launch",
-			"name": "Launch Program",
-			"skipFiles": [
-				"<node_internals>/**"
+			"cwd": "${workspaceRoot}",
+			"runtimeExecutable": "npm",
+			"runtimeArgs": [
+				"run-script", "test"
 			],
-			"program": "${workspaceFolder}/tests/basic.test.mjs"
+			"port": 5858
 		}
 	]
 }

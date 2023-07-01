@@ -1,25 +1,44 @@
+/** Holds data for unicode property names and values. Many of the names, aliases, and valid set
+ * of values are extracted from the raw unicode source. The actual codepoint data comes from
+ * the `node-unicode` library.
+ * @namespace properties
+ */
 import * as unidata from "./unidata.mjs";
 import { RangeGroup, UnicodeNormType } from "range-group";
 import unicode_index from "@unicode/unicode-15.0.0";
 
+/** Property name/value index structure
+ * @typedef {object} PropertyIndex
+ * @prop {object<string, string>} shorthand Map of property name to its shorthand alias
+ * @prop {object<string, object<string,string>>} values For each shorthand property name, a map of
+ * 	property value its shorthand alias
+ * @prop {object<string, object<string,Codepoints>>} codepoints For each property name a map of
+ * 	property value to {@link Codepoints} data
+ * @memberof properties
+ */
+
 let loaded = false;
+/** Raw index of property names and values
+ * @type {PropertyIndex}
+ * @memberof properties
+ */
 const names = {
-	// name -> shorthand_name
 	shorthand: {},
-	// shorthand_name -> { value -> shorthand_value }
 	values: {},
-	// shorthand_name -> { value -> Codepoints }
 	codepoints: {}
 };
 
-/** Handles lazy loading RangeGroup data */
+/** Handles lazy loading a set of codepoints from the `node-unicode` library as a `RangeGroup` */
 class Codepoints{
+	/** Create a new lazy loader
+	 * @param {string} path pathname inside `node-unicode` library, e.g. `"General_Category/Number"`
+	 */
 	constructor(path){
 		this.path = path;
 		this.group = null;
 	}
 	/** Get range group for these codepoints
-	 * @returns {RangeGroup}
+	 * @returns {Promise<RangeGroup>}
 	 */
 	async get(){
 		// lazy load
@@ -40,8 +59,9 @@ class Codepoints{
 
 /** Lazily load the index of property names and values. The individual unicode codepoints for
  * each are lazily loaded as they are needed
+ * @memberof properties
  */
-export async function load(){
+async function load(){
 	// already loaded?
 	if (loaded)
 		return;
@@ -87,18 +107,27 @@ export async function load(){
 				val = l2_norm;
 			}
 			// binary property
-			else if (!(l2_norm in names.shorthand)){
-				unknown.push(path);
-				continue;
-			}
 			else{
+				if (!(l2_norm in names.shorthand)){
+					// allow all from @unicode lib, except emojitest;
+					if (l2_norm !== "emojitest"){
+						names.shorthand[l2_norm] = l2_norm;
+						// copy aliases from a known binary property
+						names.values[l2_norm] = Object.assign({}, names.values.alpha);
+					}
+					else{
+						unknown.push(path);
+						continue;
+					}
+				}
 				prop = l2_norm;
 				val = 'y';
 			}
 			prop = names.shorthand[prop];
 			let sval = names.values[prop][val];
 			unknown: if (sval === undefined){
-				// use @unicode's script extensions / case folding
+				// use @unicode's script extensions / case folding;
+				// no alias data for these
 				if (prop === "scx" || prop === "cf"){
 					names.values[prop][val] = val;
 					sval = val;
@@ -117,21 +146,32 @@ export async function load(){
 		}
 	}
 	// can log unknown array for debugging purposes
+	// console.log("unicode properties without match:")
+	// console.dir(unknown, {depth: null, maxArrayLength:Infinity});
 	loaded = true;
 }
 
-/** Fetch a range group given by the unicode property name-value pair. This will throw an error
+/** Unicode characters associated with a property name-value pair
+ * @typedef {object} PropertyCharacters
+ * @prop {Codepoints} group container for characters
+ * @prop {boolean} invert whether the group should be inverted (take the complement) to
+ * 	meet the property name-value criteria; this can be set for binary properties
+ * @memberof properties
+ */
+
+/** Fetch character data given by the unicode property name-value pair. This will throw an error
  * if the name-value pair is unknown.
  * @param {string} name property name, or if `value` is ommitted, it can be the property value
  * 	for General Category or Script properties
  * @param {?string} value property value; this can be blank, if `name` is a property value for
  *  General Category or Script properties, as mentioned above; otherwise, it defaults to "true",
  *  which will be a valid value for binary properties, but error for others
- * @returns {Promise<{group: Codepoints, invert: boolean}>}
+ * @returns {Promise<PropertyCharacters>}
+ * @memberof properties
  */
-export async function get(name, value){
+async function get(name, value){
 	if (!loaded)
-		throw Error("must call load first to load the property name/values data");
+		throw Error("Must call load first to load the property name/values data");
 	let name_norm = unidata.normalize(name);
 	let value_norm;
 	validate: {
@@ -142,7 +182,7 @@ export async function get(name, value){
 			if (!name_norm)
 				throw Error("Unknown/invalid unicode property name: "+name);
 			value_norm = names.values[name_norm][value_norm];
-			if (!name_norm)
+			if (!value_norm)
 				throw Error(`Unknown/invalid value for unicode property '${name}': ${value}`);
 			break validate;
 		}
@@ -186,3 +226,5 @@ export async function get(name, value){
 		throw Error(`No RangeGroup available for ${name}=${value}`);
 	return {group, invert};
 }
+
+export { names, Codepoints, load, get };

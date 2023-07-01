@@ -1,18 +1,24 @@
 /** Evaluates a parsed AST as a RangeGroup */
 import { RangeGroup, StringRange, UnicodeNormType, UnicodeHelpers } from "range-group";
 
+/** Configurable constants for group evaluation
+ * @typedef {object} EvaluateOptions
+ * @prop {number} rebuild_threshold Threshold for `RangeGroup.ranges.length` where union op is
+ * 	faster than rebuilding
+ * @prop {number} string_range_1d_max Maximum 1D ranges that we allow to be generated from a single
+ *  multidimensional (ND) string range. This is used to guard against unintended, huge memory usage.
+ *  The `StringRange.toRanges1d` method used enumerates all string range dimensions except the last,
+ *  which could yield many ranges, dependeing on the length of the string.
+ * @memberof UnicodeSet
+ */
+
+/** Options to configure group evaluation
+ * @name UnicodeSet.options
+ * @type {EvaluateOptions}
+ */
 const options = {
-	/** Threshold for `RangeGroup.ranges.length` where union op is faster than rebuilding
-	 * @type {number}
-	 */
 	// this is just a guess, not determined emperically
 	rebuild_threshold: 3,
-	/** Maximum 1D ranges that we allow to be generated from a single multidimensional (ND) string
-	 * range. This is used to guard against unintended, huge memory usage. The `StringRange.toRanges1d`
-	 * method used enumerates all string range dimensions except the last, which could yield many
-	 * ranges, dependeing on the length of the string.
-	 * @type {number}
-	 */
 	string_range_1d_max: 12
 };
 
@@ -123,7 +129,7 @@ class LazyGroup{
 			return {start: v+'\u{0}', end: v+'\u{10FFFF}'};
 		});
 		this.ranges = new RangeGroup(uranges, {type: UnicodeNormType});
-		this.binaryOp("difference", base);
+		this.ranges.difference(base);
 	}
 	/** Perform binary set operation
 	 * @param {string} op operation to perform; one of `union`, `difference`, `intersect`, or
@@ -178,7 +184,7 @@ class LazyGroup{
 			this.readonly = false;
 			op = LazyGroup.copyOps[op];
 		}	
-		this.ranges = this.get()[op](other.ranges);
+		this.ranges = this.get()[op](other.get());
 	}
 	/** Perform batch set operation; the operation will have left-to-right operator precedence
 	 * @param {string} op operation to perform; one of `union`, `difference`, `intersect`, or
@@ -194,10 +200,9 @@ class LazyGroup{
 				union: can rearrange abitrarily to group lazy evals together
 				intersect: evaluating smallest to largest could help, as intersect will stay small
 					(possibly empty)
-				symmetric diff: evaluating smallest to largest could help, since equivalent to
-					union(lst)-intersect(lst); don't think the equivalence is any faster to compute,
-					but small-to-large will have fewer intersects to start, meaning it will sort
-					of naturally compute the equivalence
+				symmetric diff: evaluating smallest to largest could help, since each individual
+					op is equivalent to union(a,b) - intersect(a,b). If intersection is empty,
+					its just a union, which is a fast splice
 			(a-b)-c = a-(b+c): can do lazy eval of b+c
 				doesn't work for symmetric difference though
 
@@ -232,7 +237,10 @@ class LazyGroup{
 	}
 }
 
-/** Takes an AST as generated from {@link #parse} and evaluates it into a lazily evaluated group
+/** Takes an AST as generated from {@link UnicodeSet.parse} and evaluates
+ * it into a lazily evaluated group
+ * @name UnicodeSet.lazyEvaluate
+ * @function
  * @param {object} node AST node to evaluate
  * @returns {Promise<LazyGroup>}
  */
@@ -280,16 +288,14 @@ async function lazyEvaluate(node){
 				const r = {start, end};
 				if (StringRange.size(r, false) > options.string_range_1d_max)
 					throw new Error(
-						`The ND string range {${start}}-{${end}} when converted to `
+						`The ND string range {${start}}-{${end}} when converted to `+
 						`1D would exceed the maximum of ${options.string_range_1d_max} ranges`
 					);
 				group.push(...StringRange.toRanges1d(r));
 			}
 		} break;
 		case "empty":
-			// complement is trivial here; can keep a lazy representation
-			group = invert ? [{start:'\u{0}', end:'\u{10FFFF}'}] : [];
-			invert = false;
+			group = [];
 			break;
 	}
 	if (!(group instanceof LazyGroup))
@@ -301,12 +307,14 @@ async function lazyEvaluate(node){
 	return group;
 }
 
-/** Takes an AST as generated from {@link #parse} and evaluates as a `RangeGroup`
+/** Takes an AST as generated from {@link UnicodeSet.parse} and evaluates as a `RangeGroup`
+ * @name UnicodeSet.evaluate
+ * @function
  * @param {object} node AST node to evaluate
  * @returns {Promise<RangeGroup>}
  */
-function evaluate(node){
-	return lazyEvaluate(node).get(true);
+async function evaluate(node){
+	return (await lazyEvaluate(node)).get(true);
 }
 
 export { LazyGroup, evaluate, lazyEvaluate, options };

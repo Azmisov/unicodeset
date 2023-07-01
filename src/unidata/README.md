@@ -1,4 +1,6 @@
-UNIDATA file formats
+UNIDATA file formats;
+- the files were pulled from https://www.unicode.org/Public/UCD/latest/ucd/
+- current latest is 15.0; you can grab newer version of the *.txt files and it should just work
 
 ArabicShaping.txt:
 	code point; name; Joining_Type; Joining_Group
@@ -25,3 +27,13 @@ DerivedAge.txt:
 So decided this was going to be a lot of work. I'm using node-unicode library to support most
 properties now, but in the future we could go through and process some of these raw files if
 we want to get additional property support.
+
+I will still use the raw files to get property name/values and character names.
+
+TODO:
+https://util.unicode.org/UnicodeJsps/character.jsp?a=261F
+https://github.com/unicode-org/unicodetools/tree/main
+We could run offline and generate all properties to create an alternative node-unicode library that
+is more comprehensive than that one. They recommend *not* using the data in that repo, but I feel
+like it is going to be much less error prone than data you tried to parse/extract yourselves. The
+data files are not very machine friendly to be honest.

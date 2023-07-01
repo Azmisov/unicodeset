@@ -1,3 +1,6 @@
+/** Helpers for processing the raw unicode source text files, and other unicode algorithms
+ * @namespace unidata
+ */
 // Dataset: https://www.unicode.org/Public/UCD/latest/ucd/
 import fsPromises from "fs/promises";
 import { dirname } from 'path';
@@ -8,8 +11,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * https://www.unicode.org/reports/tr44/#Matching_Rules
  * @param {string} str string to normalize
  * @returns {string} normalized string
+ * @memberof unidata
  */
-export function normalize(str){
+function normalize(str){
 	let nstr = "";
 	let state = 0; // 1 = alphanumeric; 2 = pending hyphen
 	for (let i=0; i<str.length; i++){
@@ -47,8 +51,9 @@ export function normalize(str){
 
 /** Read a UNIDATA text file
  * @yields lines from the file, each an array of normalized text columns
+ * @memberof unidata
  */
-export async function* reader(name){
+async function* reader(name){
 	const lines = (await fsPromises.readFile(__dirname+"/"+name)).toString().split("\n");
 	for (let line of lines){
 		// strip comments
@@ -58,3 +63,5 @@ export async function* reader(name){
 			yield line.split(';').map(normalize);
 	}
 }
+
+export { normalize, reader }
