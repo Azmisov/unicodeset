@@ -1,4 +1,3 @@
-import regenerate from "regenerate";
 import { RangeGroup, UnicodeHelpers } from "range-group";
 import * as unidata from "./unidata/properties.mjs";
 import * as properties from "./unidata/properties.mjs";

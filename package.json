@@ -1,6 +1,6 @@
 {
 	"name": "unicodeset",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "UnicodeSet implementation: a string pattern akin to RegExp for succinctly defining a set of unicode characters and strings",
 	"keywords": [
 		"unicode",
