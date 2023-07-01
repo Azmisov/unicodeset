@@ -28,7 +28,7 @@ properties. This library performs lazy loading of unicode data as it is needed.
 
 ## Usage
 
-For installation, install `range-group` as well as that is what a `UnicodeSet` will output:
+For installation, you'll likely want to install `range-group` as well as that is what a `UnicodeSet` is evaluated to:
 ```
 npm i unicodeset range-group
 ```
@@ -45,8 +45,25 @@ const group = await UnicodeSet("[[:alpha:] - [A-Z]]");
 
 // use the RangeGroup as you normally would
 group.size();
+group.iterate();
+group.has("C");
 const sampler = new Sampler(group);
 sampler.sample();
+```
+
+This library also provides an extension `RangeGroup.prototype.addRegenerate`, which adds the ranges
+from a `RangeGroup` to a [regenerate](https://www.npmjs.com/package/regenerate) object. This can
+then be used to output a unicode aware RegExp from the resulting `RangeGroup`. The regenerate
+library is not included as a dependency, so will need to be added separately. Example:
+
+```js
+import UnicodeSet from "unicodeset";
+import regenerate from "regenerate";
+
+const re = (await UnicodeSet("[[abcd] & [bcd]]"))
+  .addRegenerate(regenerate())
+  .toString();
+// "[b-d]"
 ```
 
 Some internal options and methods used for parsing and evaluating the pattern are available as well

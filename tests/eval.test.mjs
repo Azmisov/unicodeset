@@ -1,3 +1,4 @@
+import regenerate from "regenerate";
 import UnicodeSet from "../src/unicodeset.mjs";
 import { RangeGroup, UnicodeNormType } from "range-group";
 RangeGroup.default_type = UnicodeNormType;
@@ -55,4 +56,11 @@ test.each([
 	} catch(err){
 		expect(err.message).toMatch(msg);
 	}
+});
+
+test("regenerate", async () => {
+	const re = (await UnicodeSet("[[abcd] & [bcd]]"))
+  		.addRegenerate(regenerate())
+  		.toString();
+	expect(re).toEqual("[b-d]");
 });
